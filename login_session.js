@@ -1,14 +1,14 @@
 const mssql = require('mssql');
 const config = {
-    "user": "sa",
+    "user": "test",
     "password": "qw12qw12",
-    "server": "192.168.0.134",
+    "server": "192.168.137.1",
     "port": 1433,
     "database": "aTEST",
     "options": {
         encrypt: false, // Use this if you're on Windows Azure 
         enableArithAbort: true
-    }
+    }   
 }
 
 var express = require('express');
@@ -22,8 +22,6 @@ var client_secret = 'FhQFTmrl1X';
 var state = "RAMDOM_STATE";
 var redirectURI = encodeURI("http://127.0.0.1:3000/callback");
 var api_url = "";
-var token = "AAAAOmDMn9Z-IBvBuvaABiBRePdrIwhvQl_TXoIlUG6kP-b0tglURYldyh2grRW9bkzLs2A1UmNEC-8brxIscapG1fA";
-var header = "Bearer " + token; // Bearer 다음에 공백 추가
 
 app.use(cookieParser());
 app.use(session({               // 세션적용
@@ -48,6 +46,9 @@ app.get('/naverlogin', function (req, res) {
     // 들어오자마자 바로 세션에 토큰이 있는지 확인
     var checkingAccessToken = req.session.accessToken;
     var checkingRefreshToken = req.session.refreshToken;
+    console.log(checkingAccessToken);
+    console.log(checkingRefreshToken);
+    
 
     // MSSQL에 해당 토큰이 있는지 확인
     mssql.connect(config, function (err) {
@@ -63,22 +64,6 @@ app.get('/naverlogin', function (req, res) {
 
                 // 자동로그인
                 res.redirect('/welcome');
-
-            } else if (returnData[0].p_result == '업데이트') {
-                // refreshToken만 있는 경우(accessToken 업데이트 필요)
-                console.log('accessToken update');
-
-                // accessToken update
-                var updateQuery = "EXEC p_SLI_U '" + checkingAccessToken + "', '" + checkingRefreshToken + "'";
-                mssqlRequest.query(updateQuery, function (err, updateResult) {
-                    var returnData = result.recordset;
-                    console.log(returnData);
-
-                    req.session.accessToken = checkingAccessToken;
-
-                    // 자동로그인
-                    res.redirect('/welcome');
-                });
 
             } else if (returnData[0].p_result == '사용자등록') {
                 // refreshToken 없는 경우(데이터 없음)
@@ -122,6 +107,9 @@ app.get('/callback', function (req, res) {
 // 사용자 정보 조회, MSSQL 데이터 INSERT
 app.get('/member', function (req, res) {
     console.log('memeber');
+    var loginAccessToken = _accessToken;
+    var header = "Bearer " + loginAccessToken; // Bearer 다음에 공백 추가
+
     // 세션에 토큰 넣기
     req.session.accessToken = _accessToken;
     req.session.refreshToken = _refreshToken;
@@ -138,6 +126,7 @@ app.get('/member', function (req, res) {
         if (!error && response.statusCode == 200) {
             var obj = JSON.parse(body);
 
+            // 프로필 정보 가져오기
             var id = obj.response.id;
             var nickname = obj.response.nickname;
             var profile_image = obj.response.profile_image;
@@ -172,7 +161,7 @@ app.get('/member', function (req, res) {
                         console.log('accessToken update');
 
                         // accessToken update
-                        var updateQuery = "EXEC p_SLI_U '" + _accessToken + "', '" + _refreshToken + "'";
+                        var updateQuery = "EXEC p_SLI_U '" + _accessToken + "', '" + _refreshToken + "', '" + fmDate.toLocaleString() + "'";
                         mssqlRequest.query(updateQuery, function (err, updateResult) {
                             var returnData = result.recordset;
                             console.log(returnData);
@@ -223,8 +212,7 @@ app.get('/welcome', function (req, res) {
 
 // 로그아웃 처리
 app.post('/welcome', function (req, res) {
-    /* delete req.session.accessToken;
-    delete req.session.refreshToken; */
+    // 세션삭제
     req.session.destroy();
     res.redirect('/naverlogin');
 });

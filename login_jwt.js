@@ -1,8 +1,8 @@
 const mssql = require('mssql');
 const config = {
-    "user": "sa",
+    "user": "test",
     "password": "qw12qw12",
-    "server": "192.168.0.134",
+    "server": "192.168.137.1",
     "port": 1433,
     "database": "aTEST",
     "options": {
@@ -13,7 +13,7 @@ const config = {
 
 var jwt = require('jsonwebtoken');
 var jwt_decode = require('jwt-decode');
-var secret = 'apple';   // 시크릿키 서버에 보관(중요)
+var secret_key = 'yuriminfosysqw12qw12';   // JWT 시크릿키
 var express = require('express');
 var cookieParser = require('cookie-parser');
 var app = express();
@@ -23,11 +23,11 @@ var client_secret = 'FhQFTmrl1X';
 var state = "RAMDOM_STATE";
 var redirectURI = encodeURI("http://127.0.0.1:3000/callback");
 var api_url = "";
-var token = "AAAAOmDMn9Z-IBvBuvaABiBRePdrIwhvQl_TXoIlUG6kP-b0tglURYldyh2grRW9bkzLs2A1UmNEC-8brxIscapG1fA";
-var header = "Bearer " + token; // Bearer 다음에 공백 추가
 
 
 app.use(cookieParser());
+// view engine setup
+app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
 
 var _accessToken;
@@ -48,19 +48,12 @@ app.get('/naverlogin', function (req, res) {
 
     } else {
         // 쿠키에 user 있음
-        var decoded = jwt_decode(req.cookies.user);
+        var decoded = jwt.verify(req.cookies.user, secret_key);
         console.log(decoded);
 
-        if (decoded) {
-            console.log("권한있음");
-        } else {
-            console.log("권한없음");
-        };
         _checkingAccessToken = decoded.accessToken;
         _checkingRefreshToken = decoded.refreshToken;
     }
-
-    // 들어오자마자 토큰가져오기
 
     // MSSQL에 해당 토큰이 있는지 확인
     mssql.connect(config, function (err) {
@@ -77,23 +70,7 @@ app.get('/naverlogin', function (req, res) {
                 // 자동로그인
                 res.redirect('/welcome');
 
-            } else if (returnData[0].p_result == '업데이트') {
-                // refreshToken만 있는 경우(accessToken 업데이트 필요)
-                console.log('accessToken update');
-
-                // accessToken update
-                var updateQuery = "EXEC p_SLI_U '" + _checkingAccessToken + "', '" + _checkingRefreshToken + "'";
-                mssqlRequest.query(updateQuery, function (err, updateResult) {
-                    var returnData = result.recordset;
-                    console.log(returnData);
-
-                    req.session.accessToken = _checkingAccessToken;
-
-                    // 자동로그인
-                    res.redirect('/welcome');
-                });
-
-            } else if (returnData[0].p_result == '사용자등록') {
+            }  else if (returnData[0].p_result == '사용자등록') {
                 // refreshToken 없는 경우(데이터 없음)
                 console.log('None');
                 res.writeHead(200, { 'Content-Type': 'text/html;charset=utf-8' });
@@ -135,18 +112,14 @@ app.get('/callback', function (req, res) {
 // 사용자 정보 조회, MSSQL 데이터 INSERT
 app.get('/member', function (req, res) {
     console.log('memeber');
+    console.log(_accessToken);
+    var loginAccessToken = _accessToken;
+    var header = "Bearer " + loginAccessToken; // Bearer 다음에 공백 추가
 
+    console.log("secret_key : " + secret_key);
     // JWT 생성
     // JWT 디코딩 => https://jwt.io/#debugger-io
-    var token = jwt.sign({
-        // 내용
-        accessToken: _accessToken,
-        refreshToken: _refreshToken
-    },
-        secret, // 시크릿키
-        {
-            expiresIn: '365days'    // 만료기간
-        });
+    var token = jwt.sign({accessToken: _accessToken, refreshToken: _refreshToken}, secret_key, {expiresIn: '365days'});
     console.log("token : ", token);
 
     var api_url = 'https://openapi.naver.com/v1/nid/me';
@@ -186,6 +159,7 @@ app.get('/member', function (req, res) {
                     if (returnData[0].p_result == '자동로그인') {
                         console.log('There is');
 
+                        res.clearCookie('user');
                         // JWT로 쿠키 생성
                         res.cookie("user", token, {
                             maxAge: 31557600000 // 1년
@@ -197,13 +171,12 @@ app.get('/member', function (req, res) {
                         console.log('accessToken update');
 
                         // accessToken update
-                        var updateQuery = "EXEC p_SLI_U '" + _accessToken + "', '" + _refreshToken + "'";
+                        var updateQuery = "EXEC p_SLI_U '" + _accessToken + "', '" + _refreshToken + "', '" + fmDate.toLocaleString() + "'";
                         mssqlRequest.query(updateQuery, function (err, updateResult) {
                             var returnData = result.recordset;
                             console.log(returnData);
 
-                            req.session.accessToken = _accessToken;
-
+                            res.clearCookie('user');
                             // JWT로 쿠키 생성
                             res.cookie("user", token, {
                                 maxAge: 31557600000 // 1년
@@ -256,7 +229,6 @@ app.get('/welcome', function (req, res) {
 
 // 로그아웃 처리
 app.post('/welcome', function (req, res) {
-
     res.clearCookie('user');
     res.redirect('/naverlogin');
 });
