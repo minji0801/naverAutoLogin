@@ -1,19 +1,19 @@
 const mssql = require('mssql');
 const config = {
-    "user": "test",
+    "user": "sa",
     "password": "qw12qw12",
-    "server": "192.168.137.1",
+    "server": "192.168.0.134",
     "port": 1433,
     "database": "aTEST",
     "options": {
         encrypt: false, // Use this if you're on Windows Azure 
         enableArithAbort: true
-    }   
+    }
 }
 
 var express = require('express');
-const session = require('express-session');
-const FileStore = require('session-file-store')(session);
+var session = require('express-session');
+var FileStore = require('session-file-store')(session);
 var cookieParser = require('cookie-parser');
 var app = express();
 
@@ -48,7 +48,6 @@ app.get('/naverlogin', function (req, res) {
     var checkingRefreshToken = req.session.refreshToken;
     console.log(checkingAccessToken);
     console.log(checkingRefreshToken);
-    
 
     // MSSQL에 해당 토큰이 있는지 확인
     mssql.connect(config, function (err) {

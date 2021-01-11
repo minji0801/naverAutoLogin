@@ -1,8 +1,8 @@
 const mssql = require('mssql');
 const config = {
-    "user": "test",
+    "user": "sa",
     "password": "qw12qw12",
-    "server": "192.168.137.1",
+    "server": "192.168.0.134",
     "port": 1433,
     "database": "aTEST",
     "options": {
@@ -12,7 +12,6 @@ const config = {
 }
 
 var jwt = require('jsonwebtoken');
-var jwt_decode = require('jwt-decode');
 var secret_key = 'yuriminfosysqw12qw12';   // JWT 시크릿키
 var express = require('express');
 var cookieParser = require('cookie-parser');
@@ -26,8 +25,6 @@ var api_url = "";
 
 
 app.use(cookieParser());
-// view engine setup
-app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
 
 var _accessToken;
@@ -70,7 +67,7 @@ app.get('/naverlogin', function (req, res) {
                 // 자동로그인
                 res.redirect('/welcome');
 
-            }  else if (returnData[0].p_result == '사용자등록') {
+            } else if (returnData[0].p_result == '사용자등록') {
                 // refreshToken 없는 경우(데이터 없음)
                 console.log('None');
                 res.writeHead(200, { 'Content-Type': 'text/html;charset=utf-8' });
@@ -117,9 +114,19 @@ app.get('/member', function (req, res) {
     var header = "Bearer " + loginAccessToken; // Bearer 다음에 공백 추가
 
     console.log("secret_key : " + secret_key);
+
     // JWT 생성
-    // JWT 디코딩 => https://jwt.io/#debugger-io
-    var token = jwt.sign({accessToken: _accessToken, refreshToken: _refreshToken}, secret_key, {expiresIn: '365days'});
+    var token = jwt.sign({
+                            // 내용
+                            accessToken: _accessToken, 
+                            refreshToken: _refreshToken
+                        },  
+                            // 시크릿키(인증키)
+                            secret_key
+                        ,{   
+                            // 옵션
+                            expiresIn: '365days'
+                        });
     console.log("token : ", token);
 
     var api_url = 'https://openapi.naver.com/v1/nid/me';
@@ -132,6 +139,7 @@ app.get('/member', function (req, res) {
         if (!error && response.statusCode == 200) {
             var obj = JSON.parse(body);
 
+            // 프로필 정보 가져오기
             var id = obj.response.id;
             var nickname = obj.response.nickname;
             var profile_image = obj.response.profile_image;

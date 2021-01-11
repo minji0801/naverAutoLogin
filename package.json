@@ -1,8 +1,8 @@
 {
-  "name": "naverautologin-master",
+  "name": "naverautologin",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js", 
+  "main": "login_jwt.js",
   "dependencies": {
     "cookie-parser": "^1.4.5",
     "ejs": "^3.1.5",
@@ -20,6 +20,14 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/minji0801/naverAutoLogin.git"
+  },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/minji0801/naverAutoLogin/issues"
+  },
+  "homepage": "https://github.com/minji0801/naverAutoLogin#readme"
 }
